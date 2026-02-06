@@ -1788,6 +1788,7 @@ function Vanith:CreateWindow(opts)
         Name = "BackgroundHolder",
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
+        ClipsDescendants = true,
         Size = UDim2.fromScale(1, 1),
         ZIndex = 0,
         Parent = main,
