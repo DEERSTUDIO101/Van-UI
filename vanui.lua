@@ -2280,6 +2280,19 @@ function Vanith:CreateWindow(opts)
     New("UICorner", {CornerRadius = UDim.new(0, 10), Parent = main})
     local ms = New("UIStroke", {Thickness = 1, Transparency = 0.2, Parent = main})
     self:_track(ms, "Color", "Stroke")
+    -- clippt Theme-Deko innerhalb der UI
+    main.ClipsDescendants = true
+
+    local bgHolder = New("Frame", {
+        Name = "BackgroundHolder",
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        ClipsDescendants = true,
+        Size = UDim2.fromScale(1, 1),
+        ZIndex = 0,
+        Parent = main,
+    })
+    self.BackgroundHolder = bgHolder
 
     local glass = New("Frame", {
         BackgroundColor3 = Color3.new(1, 1, 1),
@@ -2287,7 +2300,7 @@ function Vanith:CreateWindow(opts)
         BorderSizePixel = 0,
         Size = UDim2.fromScale(1, 1),
         Parent = main,
-        ZIndex = 0,
+        ZIndex = 1,
     })
     New("UICorner", {CornerRadius = UDim.new(0, 10), Parent = glass})
 
