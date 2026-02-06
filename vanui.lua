@@ -797,6 +797,34 @@ function Window:SetTheme(tbl)
     self:ApplyTheme()
 end
 
+-- wendet ein registriertes Theme + optionalen Hintergrund an
+function Window:SetThemePreset(name)
+    if type(name) ~= "string" or name == "" then return end
+
+    local def = Vanith.RegisteredThemes and Vanith.RegisteredThemes[name]
+    if not def then
+        return
+    end
+
+    if type(def.Theme) == "table" then
+        self:SetTheme(def.Theme)
+    end
+
+    if self._backgroundCleanup then
+        pcall(self._backgroundCleanup)
+        self._backgroundCleanup = nil
+    end
+
+    if type(def.Background) == "function" then
+        local ok, cleanup = pcall(def.Background, self)
+        if ok and type(cleanup) == "function" then
+            self._backgroundCleanup = cleanup
+        end
+    end
+
+    self.CurrentThemePreset = name
+end
+
 function Window:SetAccent(color)
     self.Theme.Accent = color
     self:ApplyTheme()
@@ -823,6 +851,10 @@ function Window:Restore()
 end
 
 function Window:Destroy()
+    if self._backgroundCleanup then
+        pcall(self._backgroundCleanup)
+        self._backgroundCleanup = nil
+    end
     if self.Gui then
         self.Gui:Destroy()
     end
@@ -2620,6 +2652,12 @@ function Vanith:CreateWindow(opts)
                 self:LoadConfig(self.DefaultConfigName)
             end
         end)
+    end
+
+    -- optional direkt ein ThemePreset beim Erstellen anwenden
+    local preset = opts.ThemePreset
+    if type(preset) == "string" and preset ~= "" and self.SetThemePreset then
+        self:SetThemePreset(preset)
     end
 
     return self
