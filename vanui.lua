@@ -124,152 +124,30 @@ function Vanith:GetThemes()
     return copy
 end
 
--- eingebaute Standard-Themes (werden direkt beim Laden registriert) -------
+-- Themes automatisch von GitHub laden --------------------------------------
 
-do
-    local Themes = {}
-
-    -- Winter-Theme mit simplen "Schneeflocken"
-    Themes.Winter = {
-        Theme = {
-            Accent  = Color3.fromRGB(140, 190, 255),
-            BG0     = Color3.fromRGB(8, 10, 20),
-            BG1     = Color3.fromRGB(14, 18, 32),
-            BG2     = Color3.fromRGB(18, 24, 40),
-            Stroke  = Color3.fromRGB(70, 100, 150),
-            Text    = Color3.fromRGB(230, 240, 255),
-            Muted   = Color3.fromRGB(150, 170, 200),
-            DimText = Color3.fromRGB(110, 130, 170),
-            Track   = Color3.fromRGB(24, 28, 40),
-            Field   = Color3.fromRGB(18, 20, 30),
-        },
-        Background = function(win)
-            local holder = win.BackgroundHolder or win.Main
-            if not holder or not holder.Parent then return end
-
-            local TweenService = TweenService
-            local folder = New("Folder", {
-                Name = "Vanith_WinterBackground",
-                Parent = holder,
-            })
-
-            local tint = New("Frame", {
-                Name = "Tint",
-                BorderSizePixel = 0,
-                BackgroundColor3 = Color3.fromRGB(10, 14, 32),
-                BackgroundTransparency = 0.6,
-                Size = UDim2.fromScale(1, 1),
-                ZIndex = 0,
-                Parent = folder,
-            })
-
-            local flakes = {}
-            local flakeCount = 40
-            for i = 1, flakeCount do
-                local flake = New("Frame", {
-                    BorderSizePixel = 0,
-                    BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-                    BackgroundTransparency = 0.1,
-                    Size = UDim2.new(0, 2, 0, 2),
-                    Position = UDim2.new(math.random(), 0, math.random(), 0),
-                    ZIndex = 1,
-                    Parent = folder,
-                })
-
-                local duration = 5 + math.random() * 5
-                local targetY = 1.1
-
-                local tween = TweenService:Create(
-                    flake,
-                    TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1, false),
-                    {Position = UDim2.new(flake.Position.X.Scale, 0, targetY, 0)}
-                )
-                tween:Play()
-                table.insert(flakes, {frame = flake, tween = tween})
+task.spawn(function()
+    local themesUrl = "https://raw.githubusercontent.com/DEERSTUDIO101/Van-UI/refs/heads/main/vanthemes.lua"
+    
+    local success, themesCode = pcall(function()
+        return HttpService:GetAsync(themesUrl, true)
+    end)
+    
+    if success and themesCode and type(themesCode) == "string" then
+        -- Den Theme-Code ausführen (registriert automatisch die Themes über Vanith:RegisterTheme)
+        local themeFunc, err = loadstring(themesCode)
+        if themeFunc then
+            local ok, result = pcall(themeFunc)
+            if not ok then
+                warn("Vanith: Fehler beim Laden der Themes:", result)
             end
-
-            return function()
-                for _, item in ipairs(flakes) do
-                    if item.tween then
-                        pcall(function() item.tween:Cancel() end)
-                    end
-                end
-                if folder.Parent then
-                    folder:Destroy()
-                end
-            end
-        end,
-    }
-
-    -- Oster-Theme in Pastellfarben
-    Themes.Easter = {
-        Theme = {
-            Accent  = Color3.fromRGB(255, 170, 220),
-            BG0     = Color3.fromRGB(255, 248, 252),
-            BG1     = Color3.fromRGB(250, 236, 248),
-            BG2     = Color3.fromRGB(244, 224, 244),
-            Stroke  = Color3.fromRGB(220, 190, 220),
-            Text    = Color3.fromRGB(90, 60, 90),
-            Muted   = Color3.fromRGB(140, 110, 140),
-            DimText = Color3.fromRGB(170, 140, 170),
-            Track   = Color3.fromRGB(240, 220, 240),
-            Field   = Color3.fromRGB(252, 244, 252),
-        },
-        Background = function(win)
-            local holder = win.BackgroundHolder or win.Main
-            if not holder or not holder.Parent then return end
-
-            local folder = New("Folder", {
-                Name = "Vanith_EasterBackground",
-                Parent = holder,
-            })
-
-            local base = New("Frame", {
-                Name = "Base",
-                BorderSizePixel = 0,
-                BackgroundColor3 = Color3.fromRGB(255, 245, 250),
-                BackgroundTransparency = 0.4,
-                Size = UDim2.fromScale(1, 1),
-                ZIndex = 0,
-                Parent = folder,
-            })
-
-            local colors = {
-                Color3.fromRGB(255, 204, 204),
-                Color3.fromRGB(255, 229, 204),
-                Color3.fromRGB(221, 255, 204),
-                Color3.fromRGB(204, 238, 255),
-                Color3.fromRGB(229, 204, 255),
-            }
-
-            for i = 1, 10 do
-                local bubble = New("Frame", {
-                    BorderSizePixel = 0,
-                    BackgroundColor3 = colors[((i - 1) % #colors) + 1],
-                    BackgroundTransparency = 0.3,
-                    Size = UDim2.new(0, 60, 0, 60),
-                    Position = UDim2.new(math.random(), -30, math.random(), -30),
-                    ZIndex = 1,
-                    Parent = folder,
-                })
-                New("UICorner", {
-                    CornerRadius = UDim.new(1, 0),
-                    Parent = bubble,
-                })
-            end
-
-            return function()
-                if folder.Parent then
-                    folder:Destroy()
-                end
-            end
-        end,
-    }
-
-    for name, def in pairs(Themes) do
-        Vanith:RegisterTheme(name, def)
+        else
+            warn("Vanith: Fehler beim Parsen der Themes:", err)
+        end
+    else
+        warn("Vanith: Konnte Themes nicht von GitHub laden. Fehler:", themesCode)
     end
-end
+end)
 
 -- notify -------------------------------------------------------------
 
@@ -1903,6 +1781,11 @@ function Vanith:CreateWindow(opts)
     tabsHolder:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateTopTabsLayout)
     task.defer(updateTopTabsLayout)
 
+    -- optional direkt ein ThemePreset beim Erstellen anwenden ---------
+    if type(opts.ThemePreset) == "string" and self.SetThemePreset then
+        self:SetThemePreset(opts.ThemePreset)
+    end
+
     -- control box rechts (minimize / close) - wie vorher --------------
 
     local controlBox = New("Frame", {
@@ -2145,6 +2028,15 @@ function Vanith:CreateWindow(opts)
                 self:LoadConfig(self.DefaultConfigName)
             end
         end)
+    end
+
+    -- optional direkt ein ThemePreset beim Erstellen anwenden
+    if type(opts.ThemePreset) == "string" and self.SetThemePreset then
+        -- Falls Themes noch nicht geladen sind, kurz warten und nochmal versuchen
+        if not Vanith.RegisteredThemes[opts.ThemePreset] then
+            task.wait(0.5) -- kurze Verzögerung für Theme-Loading
+        end
+        self:SetThemePreset(opts.ThemePreset)
     end
 
     return self
