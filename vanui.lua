@@ -54,6 +54,33 @@ local function RoundStep(v, minv, step)
     return (math.floor(n + 0.5) * step) + minv
 end
 
+-- nur für Slider-Texte und Fenster-Titel
+local function AutoFitText(label, maxSize, minSize, padding)
+    if not label or not (label:IsA("TextLabel") or label:IsA("TextButton")) then
+        return
+    end
+
+    maxSize = maxSize or label.TextSize or 12
+    minSize = minSize or 8
+    padding = padding or 4
+
+    local function update()
+        local w = label.AbsoluteSize.X
+        if w <= 0 then return end
+
+        for size = maxSize, minSize, -1 do
+            label.TextSize = size
+            if label.TextBounds.X <= (w - padding) then
+                break
+            end
+        end
+    end
+
+    label:GetPropertyChangedSignal("Text"):Connect(update)
+    label:GetPropertyChangedSignal("AbsoluteSize"):Connect(update)
+    task.defer(update)
+end
+
 local function PlayTween(inst, props, time)
     if not inst then return end
     time = time or 0.15
@@ -101,50 +128,17 @@ local DEFAULT_THEME = {
     Field   = Color3.fromRGB(16, 16, 20),
 }
 
--- externe Theme-Registry (für zweite Datei) -------------------------------
-
-Vanith.RegisteredThemes = {}
-
-function Vanith:RegisterTheme(name, def)
-    if type(name) ~= "string" or type(def) ~= "table" then
-        return
-    end
-    self.RegisteredThemes[name] = def
-end
-
-function Vanith:GetTheme(name)
-    return self.RegisteredThemes[name]
-end
-
-function Vanith:GetThemes()
-    local copy = {}
-    for k, v in pairs(self.RegisteredThemes) do
-        copy[k] = v
-    end
-    return copy
-end
-
--- externe Themes automatisch laden (GitHub)
+-- Vanith UI - externe Theme-/Hintergrund-Definitionen
+-- (lokal eingebettet, keine externe Datei)
 do
-    local url = "https://raw.githubusercontent.com/DEERSTUDIO101/Van-UI/refs/heads/main/vanthemes.lua"
-    local ok, src = pcall(function()
-        return game:HttpGet(url)
-    end)
-    if ok and type(src) == "string" and src ~= "" then
-        local okRun, fnOrErr = pcall(loadstring, src)
-        if okRun and type(fnOrErr) == "function" then
-            -- Vanith als Parameter Ã¼bergeben, damit keine Global-Variable nÃ¶tig ist
-            pcall(fnOrErr, Vanith)
-        end
-    end
-end
+    local VanithRef = Vanith
 
--- eingebaute Standard-Themes (werden direkt beim Laden registriert) -------
+    local Players      = game:GetService("Players")
+    local TweenService = game:GetService("TweenService")
 
-do
     local Themes = {}
-    
-    -- Helper für sicheren Holder-Zugriff
+
+    -- einfacher Helper fÃ¼r sicheren Holder-Zugriff
     local function getHolder(win)
         if win.BackgroundHolder and win.BackgroundHolder.Parent then
             return win.BackgroundHolder
@@ -154,17 +148,18 @@ do
         end
         return nil
     end
-    
-    -- Winter-Theme mit simplen "Schneeflocken"
+
+    -- Winter-Theme mit simplen "Schneeflocken" -------------------------------
+
     local function makeWinterBackground(win)
         local holder = getHolder(win)
         if not holder then return end
-        
+
         local folder = Instance.new("Folder")
         folder.Name = "Vanith_WinterBackground"
         folder.Parent = holder
-        
-        -- leicht blaue Tönung im Hintergrund
+
+        -- leicht blaue TÃ¶nung im Hintergrund
         local tint = Instance.new("Frame")
         tint.Name = "Tint"
         tint.BorderSizePixel = 0
@@ -173,8 +168,8 @@ do
         tint.Size = UDim2.fromScale(1, 1)
         tint.ZIndex = 0
         tint.Parent = folder
-        
-        -- einfache Schneeflocken als kleine weiße Punkte mit Tween nach unten
+
+        -- einfache Schneeflocken als kleine weiÃŸe Punkte mit Tween nach unten
         local flakes = {}
         local flakeCount = 40
         for i = 1, flakeCount do
@@ -186,10 +181,10 @@ do
             flake.Position = UDim2.new(math.random(), 0, math.random(), 0)
             flake.ZIndex = 1
             flake.Parent = folder
-            
+
             local duration = 5 + math.random() * 5
             local targetY = 1.1
-            
+
             local tween = TweenService:Create(
                 flake,
                 TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1, false),
@@ -198,8 +193,8 @@ do
             tween:Play()
             table.insert(flakes, {frame = flake, tween = tween})
         end
-        
-        -- Cleanup-Funktion zurückgeben
+
+        -- Cleanup-Funktion zurÃ¼ckgeben
         return function()
             for _, item in ipairs(flakes) do
                 if item.tween then
@@ -211,7 +206,7 @@ do
             end
         end
     end
-    
+
     Themes["Winter"] = {
         Theme = {
             Accent  = Color3.fromRGB(140, 190, 255),
@@ -227,16 +222,17 @@ do
         },
         Background = makeWinterBackground,
     }
-    
-    -- Einfaches Oster-Theme mit Pastellfarben
+
+    -- Einfaches Oster-Theme mit Pastellfarben --------------------------------
+
     local function makeEasterBackground(win)
         local holder = getHolder(win)
         if not holder then return end
-        
+
         local folder = Instance.new("Folder")
         folder.Name = "Vanith_EasterBackground"
         folder.Parent = holder
-        
+
         local base = Instance.new("Frame")
         base.Name = "Base"
         base.BorderSizePixel = 0
@@ -245,7 +241,7 @@ do
         base.Size = UDim2.fromScale(1, 1)
         base.ZIndex = 0
         base.Parent = folder
-        
+
         local colors = {
             Color3.fromRGB(255, 204, 204),
             Color3.fromRGB(255, 229, 204),
@@ -253,7 +249,7 @@ do
             Color3.fromRGB(204, 238, 255),
             Color3.fromRGB(229, 204, 255),
         }
-        
+
         for i = 1, 10 do
             local bubble = Instance.new("Frame")
             bubble.BorderSizePixel = 0
@@ -263,19 +259,19 @@ do
             bubble.Position = UDim2.new(math.random(), -30, math.random(), -30)
             bubble.ZIndex = 1
             bubble.Parent = folder
-            
+
             local corner = Instance.new("UICorner")
             corner.CornerRadius = UDim.new(1, 0)
             corner.Parent = bubble
         end
-        
+
         return function()
             if folder.Parent then
                 folder:Destroy()
             end
         end
     end
-    
+
     Themes["Easter"] = {
         Theme = {
             Accent  = Color3.fromRGB(255, 170, 220),
@@ -291,10 +287,299 @@ do
         },
         Background = makeEasterBackground,
     }
-    
-    -- alle Themes registrieren
+
+    -- Neon-Theme mit bewegten Linien -----------------------------------------
+
+    local function makeNeonBackground(win)
+        local holder = getHolder(win)
+        if not holder then return end
+
+        local folder = Instance.new("Folder")
+        folder.Name = "Vanith_NeonBackground"
+        folder.Parent = holder
+
+        local tint = Instance.new("Frame")
+        tint.Name = "Tint"
+        tint.BorderSizePixel = 0
+        tint.BackgroundColor3 = Color3.fromRGB(8, 4, 16)
+        tint.BackgroundTransparency = 0.15
+        tint.Size = UDim2.fromScale(1, 1)
+        tint.ZIndex = 0
+        tint.Parent = folder
+
+        local lines = {}
+        for i = 1, 8 do
+            local line = Instance.new("Frame")
+            line.BorderSizePixel = 0
+            line.BackgroundColor3 = Color3.fromRGB(0, 255, 200)
+            line.BackgroundTransparency = 0.4
+            line.Size = UDim2.new(1, 0, 0, 2)
+            line.Position = UDim2.new(0, 0, (i - 1) / 8, 0)
+            line.ZIndex = 1
+            line.Parent = folder
+
+            local duration = 3 + math.random() * 3
+            local tween = TweenService:Create(
+                line,
+                TweenInfo.new(duration, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+                {Position = UDim2.new(0, 0, line.Position.Y.Scale + 0.08, 0)}
+            )
+            tween:Play()
+            table.insert(lines, {frame = line, tween = tween})
+        end
+
+        return function()
+            for _, item in ipairs(lines) do
+                if item.tween then
+                    pcall(function() item.tween:Cancel() end)
+                end
+            end
+            if folder.Parent then
+                folder:Destroy()
+            end
+        end
+    end
+
+    Themes["Neon"] = {
+        Theme = {
+            Accent  = Color3.fromRGB(0, 255, 200),
+            BG0     = Color3.fromRGB(8, 6, 14),
+            BG1     = Color3.fromRGB(14, 10, 24),
+            BG2     = Color3.fromRGB(18, 14, 32),
+            Stroke  = Color3.fromRGB(60, 40, 90),
+            Text    = Color3.fromRGB(235, 235, 255),
+            Muted   = Color3.fromRGB(150, 150, 180),
+            DimText = Color3.fromRGB(120, 120, 150),
+            Track   = Color3.fromRGB(24, 20, 36),
+            Field   = Color3.fromRGB(16, 12, 24),
+        },
+        Background = makeNeonBackground,
+    }
+
+    -- Forest-Theme mit sanften "Lichtflecken" --------------------------------
+
+    local function makeForestBackground(win)
+        local holder = getHolder(win)
+        if not holder then return end
+
+        local folder = Instance.new("Folder")
+        folder.Name = "Vanith_ForestBackground"
+        folder.Parent = holder
+
+        local base = Instance.new("Frame")
+        base.Name = "Base"
+        base.BorderSizePixel = 0
+        base.BackgroundColor3 = Color3.fromRGB(14, 20, 14)
+        base.BackgroundTransparency = 0.2
+        base.Size = UDim2.fromScale(1, 1)
+        base.ZIndex = 0
+        base.Parent = folder
+
+        local spots = {}
+        for i = 1, 12 do
+            local spot = Instance.new("Frame")
+            spot.BorderSizePixel = 0
+            spot.BackgroundColor3 = Color3.fromRGB(80, 120, 80)
+            spot.BackgroundTransparency = 0.6
+            spot.Size = UDim2.new(0, 120, 0, 120)
+            spot.Position = UDim2.new(math.random(), -60, math.random(), -60)
+            spot.ZIndex = 1
+            spot.Parent = folder
+
+            local corner = Instance.new("UICorner")
+            corner.CornerRadius = UDim.new(1, 0)
+            corner.Parent = spot
+
+            local tween = TweenService:Create(
+                spot,
+                TweenInfo.new(6 + math.random() * 4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+                {BackgroundTransparency = 0.3}
+            )
+            tween:Play()
+            table.insert(spots, {frame = spot, tween = tween})
+        end
+
+        return function()
+            for _, item in ipairs(spots) do
+                if item.tween then
+                    pcall(function() item.tween:Cancel() end)
+                end
+            end
+            if folder.Parent then
+                folder:Destroy()
+            end
+        end
+    end
+
+    Themes["Forest"] = {
+        Theme = {
+            Accent  = Color3.fromRGB(120, 190, 120),
+            BG0     = Color3.fromRGB(10, 16, 10),
+            BG1     = Color3.fromRGB(16, 22, 16),
+            BG2     = Color3.fromRGB(20, 28, 20),
+            Stroke  = Color3.fromRGB(60, 80, 60),
+            Text    = Color3.fromRGB(230, 245, 230),
+            Muted   = Color3.fromRGB(150, 170, 150),
+            DimText = Color3.fromRGB(110, 130, 110),
+            Track   = Color3.fromRGB(22, 28, 22),
+            Field   = Color3.fromRGB(16, 20, 16),
+        },
+        Background = makeForestBackground,
+    }
+
+    -- Sunset-Theme mit warmem Verlauf und Partikeln ---------------------------
+
+    local function makeSunsetBackground(win)
+        local holder = getHolder(win)
+        if not holder then return end
+
+        local folder = Instance.new("Folder")
+        folder.Name = "Vanith_SunsetBackground"
+        folder.Parent = holder
+
+        local base = Instance.new("Frame")
+        base.Name = "Base"
+        base.BorderSizePixel = 0
+        base.BackgroundColor3 = Color3.fromRGB(40, 16, 10)
+        base.BackgroundTransparency = 0.15
+        base.Size = UDim2.fromScale(1, 1)
+        base.ZIndex = 0
+        base.Parent = folder
+
+        local particles = {}
+        for i = 1, 20 do
+            local p = Instance.new("Frame")
+            p.BorderSizePixel = 0
+            p.BackgroundColor3 = Color3.fromRGB(255, 180, 120)
+            p.BackgroundTransparency = 0.4
+            p.Size = UDim2.new(0, 3, 0, 3)
+            p.Position = UDim2.new(math.random(), 0, math.random(), 0)
+            p.ZIndex = 1
+            p.Parent = folder
+
+            local duration = 4 + math.random() * 4
+            local tween = TweenService:Create(
+                p,
+                TweenInfo.new(duration, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+                {Position = UDim2.new(p.Position.X.Scale, 0, p.Position.Y.Scale + 0.06, 0)}
+            )
+            tween:Play()
+            table.insert(particles, {frame = p, tween = tween})
+        end
+
+        return function()
+            for _, item in ipairs(particles) do
+                if item.tween then
+                    pcall(function() item.tween:Cancel() end)
+                end
+            end
+            if folder.Parent then
+                folder:Destroy()
+            end
+        end
+    end
+
+    Themes["Sunset"] = {
+        Theme = {
+            Accent  = Color3.fromRGB(255, 160, 100),
+            BG0     = Color3.fromRGB(22, 10, 8),
+            BG1     = Color3.fromRGB(30, 14, 10),
+            BG2     = Color3.fromRGB(38, 18, 12),
+            Stroke  = Color3.fromRGB(100, 60, 40),
+            Text    = Color3.fromRGB(255, 230, 210),
+            Muted   = Color3.fromRGB(190, 150, 120),
+            DimText = Color3.fromRGB(160, 120, 100),
+            Track   = Color3.fromRGB(32, 18, 14),
+            Field   = Color3.fromRGB(26, 12, 10),
+        },
+        Background = makeSunsetBackground,
+    }
+
+    -- Mono-Theme ohne Hintergrundanimation -----------------------------------
+
+    Themes["Mono"] = {
+        Theme = {
+            Accent  = Color3.fromRGB(220, 220, 220),
+            BG0     = Color3.fromRGB(12, 12, 12),
+            BG1     = Color3.fromRGB(18, 18, 18),
+            BG2     = Color3.fromRGB(24, 24, 24),
+            Stroke  = Color3.fromRGB(80, 80, 80),
+            Text    = Color3.fromRGB(240, 240, 240),
+            Muted   = Color3.fromRGB(170, 170, 170),
+            DimText = Color3.fromRGB(120, 120, 120),
+            Track   = Color3.fromRGB(22, 22, 22),
+            Field   = Color3.fromRGB(16, 16, 16),
+        },
+        Background = nil,
+    }
+
+    -- Ocean-Theme mit sanfter Welle ------------------------------------------
+
+    local function makeOceanBackground(win)
+        local holder = getHolder(win)
+        if not holder then return end
+
+        local folder = Instance.new("Folder")
+        folder.Name = "Vanith_OceanBackground"
+        folder.Parent = holder
+
+        local base = Instance.new("Frame")
+        base.Name = "Base"
+        base.BorderSizePixel = 0
+        base.BackgroundColor3 = Color3.fromRGB(6, 14, 26)
+        base.BackgroundTransparency = 0.2
+        base.Size = UDim2.fromScale(1, 1)
+        base.ZIndex = 0
+        base.Parent = folder
+
+        local wave = Instance.new("Frame")
+        wave.BorderSizePixel = 0
+        wave.BackgroundColor3 = Color3.fromRGB(60, 130, 200)
+        wave.BackgroundTransparency = 0.6
+        wave.Size = UDim2.new(1, 0, 0, 80)
+        wave.Position = UDim2.new(0, 0, 0.7, 0)
+        wave.ZIndex = 1
+        wave.Parent = folder
+
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(1, 0)
+        corner.Parent = wave
+
+        local tween = TweenService:Create(
+            wave,
+            TweenInfo.new(6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+            {Position = UDim2.new(0, 0, 0.62, 0)}
+        )
+        tween:Play()
+
+        return function()
+            pcall(function() tween:Cancel() end)
+            if folder.Parent then
+                folder:Destroy()
+            end
+        end
+    end
+
+    Themes["Ocean"] = {
+        Theme = {
+            Accent  = Color3.fromRGB(120, 190, 255),
+            BG0     = Color3.fromRGB(6, 10, 18),
+            BG1     = Color3.fromRGB(10, 16, 26),
+            BG2     = Color3.fromRGB(14, 20, 32),
+            Stroke  = Color3.fromRGB(50, 80, 120),
+            Text    = Color3.fromRGB(230, 245, 255),
+            Muted   = Color3.fromRGB(150, 175, 200),
+            DimText = Color3.fromRGB(110, 135, 160),
+            Track   = Color3.fromRGB(18, 24, 32),
+            Field   = Color3.fromRGB(12, 18, 26),
+        },
+        Background = makeOceanBackground,
+    }
+
+    -- alle Themes bei Vanith registrieren ------------------------------------
+
     for name, def in pairs(Themes) do
-        Vanith:RegisterTheme(name, def)
+        VanithRef:RegisterTheme(name, def)
     end
 end
 
@@ -490,38 +775,6 @@ function Window:SetTheme(tbl)
     self:ApplyTheme()
 end
 
--- wendet ein registriertes Theme + optionalen Hintergrund an --------------
-
-function Window:SetThemePreset(name)
-    if type(name) ~= "string" then return end
-
-    local def = Vanith.RegisteredThemes and Vanith.RegisteredThemes[name]
-    if not def then
-        return
-    end
-
-    -- Basis-Farben anwenden
-    if type(def.Theme) == "table" then
-        self:SetTheme(def.Theme)
-    end
-
-    -- alten Hintergrund entfernen
-    if self._backgroundCleanup then
-        pcall(self._backgroundCleanup)
-        self._backgroundCleanup = nil
-    end
-
-    -- neuen Hintergrund aufbauen
-    if type(def.Background) == "function" then
-        local ok, cleanup = pcall(def.Background, self)
-        if ok and type(cleanup) == "function" then
-            self._backgroundCleanup = cleanup
-        end
-    end
-
-    self.CurrentThemePreset = name
-end
-
 function Window:SetAccent(color)
     self.Theme.Accent = color
     self:ApplyTheme()
@@ -548,10 +801,6 @@ function Window:Restore()
 end
 
 function Window:Destroy()
-    if self._backgroundCleanup then
-        pcall(self._backgroundCleanup)
-        self._backgroundCleanup = nil
-    end
     if self.Gui then
         self.Gui:Destroy()
     end
@@ -659,14 +908,14 @@ end
 function Window:_makeTopTabButton(text)
     local holder = self.TopTabsHolder
 
+    -- Feste Breite, damit ALLE TopTabs gleich groß sind
     local btn = New("TextButton", {
-        AutoButtonColor = false,
+        AutoButtonColor       = false,
         BackgroundTransparency = 1,
-        Text = "",
-        Size = UDim2.new(0, 0, 1, 0),
-        AutomaticSize = Enum.AutomaticSize.X,
-        Parent = holder,
-        ZIndex = 4,
+        Text                  = "",
+        Size                  = UDim2.new(0, 72, 1, 0), -- << fixed width
+        Parent                = holder,
+        ZIndex                = 4,
     })
 
     local label = New("TextLabel", {
@@ -680,6 +929,7 @@ function Window:_makeTopTabButton(text)
         ZIndex = 5,
         TextColor3 = self.Theme.DimText,
     })
+    -- kein AutoFit hier
 
     local underline = New("Frame", {
         BorderSizePixel = 0,
@@ -739,6 +989,7 @@ function Window:CreateTab(name)
         ZIndex = 3,
     })
     self:_track(label, "TextColor3", "Muted")
+    -- kein AutoFit hier
 
     local page = New("Frame", {
         BackgroundTransparency = 1,
@@ -914,6 +1165,7 @@ function Tab:CreateSection(title, slot, topTabNameOrObj)
         Parent = frame,
     })
     win:_track(head, "TextColor3", "Accent")
+    -- kein AutoFit
 
     local inner = New("ScrollingFrame", {
         BorderSizePixel = 0,
@@ -1020,6 +1272,8 @@ function Section:CreateSlider(cfg)
         Parent = row,
     })
     win:_track(label, "TextColor3", "DimText")
+    -- Slider-Label auto-fit
+    AutoFitText(label, 11, 8, 4)
 
     local valueText = New("TextLabel", {
         BackgroundTransparency = 1,
@@ -1031,6 +1285,8 @@ function Section:CreateSlider(cfg)
         Parent = row,
     })
     win:_track(valueText, "TextColor3", "Accent")
+    -- Slider-Wert auto-fit
+    AutoFitText(valueText, 11, 8, 4)
 
     local track = New("Frame", {
         BorderSizePixel = 0,
@@ -1120,7 +1376,6 @@ function Section:CreateSlider(cfg)
         end)
     end
 
-    -- Slider lässt sich jetzt über die ganze Reihe starten, nicht nur exakt auf dem Track
     row.InputBegan:Connect(function(input)
         if IsMouse(input.UserInputType) or IsTouch(input.UserInputType) then
             begin(input)
@@ -1133,7 +1388,6 @@ function Section:CreateSlider(cfg)
         end
     end)
 
-    -- stabileres Dragging: wir folgen einfach der Maus/Touch solange dragging == true
     UserInputService.InputChanged:Connect(function(input)
         if not dragging then return end
         if input.UserInputType == Enum.UserInputType.MouseMovement
@@ -1201,6 +1455,7 @@ function Section:CreateToggle(cfg)
         Parent = row,
     })
     win:_track(label, "TextColor3", "Text")
+    -- kein AutoFit
 
     local obj = {}
 
@@ -1375,6 +1630,7 @@ function Section:CreateButton(cfg)
     New("UICorner", {CornerRadius = UDim.new(0, 3), Parent = btn})
     local st = New("UIStroke", {Thickness = 1, Transparency = 0.55, Parent = btn})
     win:_track(st, "Color", "Stroke")
+    -- kein AutoFit
 
     btn.MouseButton1Click:Connect(function()
         PlayTween(btn, {BackgroundColor3 = win.Theme.Track}, 0.08)
@@ -1464,13 +1720,15 @@ function Section:CreateTextbox(cfg)
     return obj
 end
 
--- controls: dropdown -------------------------------------------------
+-- controls: dropdown (single + multi) -------------------------------
 
 function Section:CreateDropdown(cfg)
     local win   = self.Window
     local inner = self.Inner
     local tab   = self.Tab
     local c     = cfg or {}
+
+    local isMulti = c.Multi == true
 
     local function getProfileKey()
         if tab and tab._activeTopTab then
@@ -1480,13 +1738,8 @@ function Section:CreateDropdown(cfg)
     end
 
     local options           = c.Options or {}
-    local defaultSelection  = c.Default or options[1] or "None"
     local selectedByProfile = {}
-    selectedByProfile[getProfileKey()] = defaultSelection
-
-    local current   = defaultSelection
-    local open      = false
-    local maxHeight = c.MaxHeight
+    local maxHeight         = c.MaxHeight
 
     local ROW_HEIGHT   = 24
     local ITEM_HEIGHT  = 20
@@ -1530,18 +1783,20 @@ function Section:CreateDropdown(cfg)
         Parent = head,
     })
     win:_track(nameLbl, "TextColor3", "DimText")
+    -- kein AutoFit
 
     local valLbl = New("TextLabel", {
         BackgroundTransparency = 1,
         Position = UDim2.new(0.6, 0, 0, 0),
         Size = UDim2.new(0.4, -26, 1, 0),
         Font = Enum.Font.GothamBold,
-        Text = tostring(current),
+        Text = "",
         TextSize = 11,
         TextXAlignment = Enum.TextXAlignment.Right,
         Parent = head,
     })
     win:_track(valLbl, "TextColor3", "Text")
+    -- kein AutoFit
 
     local arrow = New("TextLabel", {
         BackgroundTransparency = 1,
@@ -1586,12 +1841,131 @@ function Section:CreateDropdown(cfg)
         Parent        = listBg,
     })
 
-    local function applySelectionForCurrentProfile(sel, callCallback)
-        current = sel
-        selectedByProfile[getProfileKey()] = sel
-        valLbl.Text = tostring(current)
-        if callCallback and c.Callback then
-            task.spawn(c.Callback, current)
+    local function getOrInitProfileValue()
+        local key = getProfileKey()
+        local v   = selectedByProfile[key]
+
+        if isMulti then
+            if type(v) ~= "table" or v.__multi ~= true or type(v.values) ~= "table" then
+                local map = {}
+                if type(c.Default) == "table" then
+                    for _, opt in ipairs(c.Default) do
+                        if table.find(options, opt) then
+                            map[opt] = true
+                        end
+                    end
+                elseif c.Default ~= nil then
+                    if table.find(options, c.Default) then
+                        map[c.Default] = true
+                    end
+                end
+                v = { __multi = true, values = map }
+                selectedByProfile[key] = v
+            end
+        else
+            if v == nil or type(v) ~= "string" then
+                local d = c.Default or options[1] or "None"
+                v = d
+                selectedByProfile[key] = v
+            end
+        end
+
+        return v
+    end
+
+    local function getDisplayText()
+        if isMulti then
+            local entry = getOrInitProfileValue()
+            local map   = entry.values or {}
+            local listVals  = {}
+
+            for _, opt in ipairs(options) do
+                if map[opt] then
+                    table.insert(listVals, tostring(opt))
+                end
+            end
+
+            if #listVals == 0 then
+                return "None"
+            elseif #listVals <= 2 then
+                return table.concat(listVals, ", ")
+            else
+                return tostring(#listVals) .. " selected"
+            end
+        else
+            local v = getOrInitProfileValue()
+            return tostring(v)
+        end
+    end
+
+    local function fireCallback()
+        if not c.Callback then return end
+
+        if isMulti then
+            local entry = getOrInitProfileValue()
+            local map   = entry.values or {}
+            local out   = {}
+            for _, opt in ipairs(options) do
+                if map[opt] then
+                    table.insert(out, opt)
+                end
+            end
+            task.spawn(c.Callback, out)
+        else
+            task.spawn(c.Callback, getOrInitProfileValue())
+        end
+    end
+
+    local function cleanupSelections()
+        if isMulti then
+            for key, entry in pairs(selectedByProfile) do
+                if type(entry) ~= "table" or entry.__multi ~= true or type(entry.values) ~= "table" then
+                    selectedByProfile[key] = nil
+                else
+                    local newMap = {}
+                    for _, opt in ipairs(options) do
+                        if entry.values[opt] then
+                            newMap[opt] = true
+                        end
+                    end
+                    entry.values = newMap
+                end
+            end
+        else
+            for key, val in pairs(selectedByProfile) do
+                if not table.find(options, val) then
+                    selectedByProfile[key] = options[1] or "None"
+                end
+            end
+        end
+    end
+
+    local open = false
+
+    local function setOpen(state)
+        if state == open then return end
+        open = state
+
+        if open then
+            arrow.Text = "v"
+            local contentHeight = calcContentHeight()
+            if maxHeight and maxHeight > 0 then
+                contentHeight = math.min(contentHeight, maxHeight)
+            end
+
+            local targetSize = UDim2.new(1, 0, 0, contentHeight)
+
+            PlayTween(listBg,   {Size = targetSize}, 0.12)
+            PlayTween(listWrap, {Size = targetSize}, 0.12)
+            PlayTween(wrap,     {Size = UDim2.new(1, 0, 0, ROW_HEIGHT + contentHeight)}, 0.12)
+            PlayTween(arrow,    {Rotation = 90}, 0.12)
+        else
+            arrow.Text = "<"
+            local closedSize = UDim2.new(1, 0, 0, 0)
+            PlayTween(listBg,   {Size = closedSize}, 0.12)
+            PlayTween(listWrap, {Size = closedSize}, 0.12)
+            PlayTween(wrap,     {Size = UDim2.new(1, 0, 0, ROW_HEIGHT)}, 0.12)
+            PlayTween(arrow,    {Rotation = 0}, 0.12)
         end
     end
 
@@ -1613,53 +1987,56 @@ function Section:CreateDropdown(cfg)
                 TextXAlignment = Enum.TextXAlignment.Left,
                 Parent = listBg,
             })
-            b.TextColor3 = (opt == current) and win.Theme.Accent or win.Theme.Text
+            b.TextColor3 = win.Theme.Text
 
-            b.MouseButton1Click:Connect(function()
-                applySelectionForCurrentProfile(opt, true)
-                rebuild()
-                -- beim Auswählen schön zu-animieren
-                setOpen(false)
-            end)
-        end
-    end
+            if isMulti then
+                local function updateButton()
+                    local entry = getOrInitProfileValue()
+                    local map   = entry.values or {}
+                    local sel   = map[opt] and true or false
+                    b.Text = (sel and "● " or "○ ") .. tostring(opt)
+                    b.TextColor3 = sel and win.Theme.Accent or win.Theme.Text
+                end
 
-    local function setOpen(state)
-        if state == open then return end
-        open = state
+                updateButton()
 
-        if open then
-            arrow.Text = "v"
-            local contentHeight = calcContentHeight()
-            if maxHeight and maxHeight > 0 then
-                contentHeight = math.min(contentHeight, maxHeight)
+                b.MouseButton1Click:Connect(function()
+                    local entry = getOrInitProfileValue()
+                    local map   = entry.values
+                    if map[opt] then
+                        map[opt] = nil
+                    else
+                        map[opt] = true
+                    end
+                    updateButton()
+                    valLbl.Text = getDisplayText()
+                    fireCallback()
+                    -- Multi bleibt offen
+                end)
+            else
+                local function updateButton()
+                    local current = getOrInitProfileValue()
+                    b.TextColor3 = (current == opt) and win.Theme.Accent or win.Theme.Text
+                end
+
+                updateButton()
+
+                b.MouseButton1Click:Connect(function()
+                    selectedByProfile[getProfileKey()] = opt
+                    valLbl.Text = tostring(opt)
+                    fireCallback()
+                    rebuild()
+                    -- Single: schließen nach Klick
+                    setOpen(false)
+                end)
             end
-
-            local targetSize = UDim2.new(1, 0, 0, contentHeight)
-
-            -- animiertes Aufklappen
-            PlayTween(listBg,   {Size = targetSize}, 0.12)
-            PlayTween(listWrap, {Size = targetSize}, 0.12)
-            PlayTween(wrap,     {Size = UDim2.new(1, 0, 0, ROW_HEIGHT + contentHeight)}, 0.12)
-            PlayTween(arrow,    {Rotation = 90}, 0.12)
-        else
-            arrow.Text = "<"
-            -- animiertes Zuklappen
-            local closedSize = UDim2.new(1, 0, 0, 0)
-            PlayTween(listBg,   {Size = closedSize}, 0.12)
-            PlayTween(listWrap, {Size = closedSize}, 0.12)
-            PlayTween(wrap,     {Size = UDim2.new(1, 0, 0, ROW_HEIGHT)}, 0.12)
-            PlayTween(arrow,    {Rotation = 0}, 0.12)
         end
     end
-
-    rebuild()
 
     head.MouseButton1Click:Connect(function()
         setOpen(not open)
     end)
 
-    -- kleines Hover-Feedback für den Kopf des Dropdowns
     head.MouseEnter:Connect(function()
         PlayTween(head, {BackgroundColor3 = win.Theme.Track}, 0.08)
     end)
@@ -1668,14 +2045,9 @@ function Section:CreateDropdown(cfg)
     end)
 
     local function syncProfile()
-        local key = getProfileKey()
-        local sel = selectedByProfile[key]
-        if sel == nil then
-            sel = defaultSelection
-            selectedByProfile[key] = sel
-        end
-        current = sel
-        valLbl.Text = tostring(current)
+        cleanupSelections()
+        getOrInitProfileValue()
+        valLbl.Text = getDisplayText()
         rebuild()
     end
 
@@ -1684,27 +2056,101 @@ function Section:CreateDropdown(cfg)
     local obj = {}
     function obj:SetOptions(opts)
         options = opts or {}
-        if not table.find(options, current) then
-            current = options[1] or "None"
-            selectedByProfile[getProfileKey()] = current
-            valLbl.Text = tostring(current)
-        end
+        cleanupSelections()
+        valLbl.Text = getDisplayText()
         rebuild()
         setOpen(false)
     end
+
     function obj:Set(v)
-        if table.find(options, v) then
-            applySelectionForCurrentProfile(v, false)
-            rebuild()
+        if isMulti then
+            local map = {}
+            if type(v) == "table" then
+                for _, opt in ipairs(v) do
+                    if table.find(options, opt) then
+                        map[opt] = true
+                    end
+                end
+            elseif v ~= nil and table.find(options, v) then
+                map[v] = true
+            end
+            selectedByProfile[getProfileKey()] = { __multi = true, values = map }
+        else
+            if v ~= nil and table.find(options, v) then
+                selectedByProfile[getProfileKey()] = v
+            end
+        end
+        valLbl.Text = getDisplayText()
+        rebuild()
+    end
+
+    function obj:Get()
+        if isMulti then
+            local entry = getOrInitProfileValue()
+            local map   = entry.values or {}
+            local out   = {}
+            for _, opt in ipairs(options) do
+                if map[opt] then
+                    table.insert(out, opt)
+                end
+            end
+            return out
+        else
+            return getOrInitProfileValue()
         end
     end
-    function obj:Get()
-        return current
-    end
+
     function obj:_syncProfile()
         syncProfile()
     end
+
     obj._profileValues = selectedByProfile
+
+    table.insert(self._controls, obj)
+    return obj
+end
+
+-- controls: text (reiner Info-Text) ---------------------------------
+
+function Section:CreateText(cfg)
+    local win   = self.Window
+    local inner = self.Inner
+    local c     = cfg or {}
+
+    local text    = c.Text or c.Value or "Text"
+    local align   = (c.Align or c.Alignment or "left"):lower()
+    local size    = c.Size or 11
+    local wrapped = c.Wrap ~= false
+
+    local xAlign = Enum.TextXAlignment.Left
+    if align == "center" then
+        xAlign = Enum.TextXAlignment.Center
+    elseif align == "right" then
+        xAlign = Enum.TextXAlignment.Right
+    end
+
+    local lbl = New("TextLabel", {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 0, 0),
+        AutomaticSize = Enum.AutomaticSize.Y,
+        Font = Enum.Font.Gotham,
+        Text = text,
+        TextWrapped = wrapped,
+        TextXAlignment = xAlign,
+        TextYAlignment = Enum.TextYAlignment.Top,
+        TextSize = size,
+        Parent = inner,
+    })
+    win:_track(lbl, "TextColor3", "DimText")
+    -- kein AutoFit
+
+    local obj = {}
+    function obj:SetText(t)
+        lbl.Text = t or ""
+    end
+    function obj:GetText()
+        return lbl.Text
+    end
 
     table.insert(self._controls, obj)
     return obj
@@ -1746,8 +2192,6 @@ function Vanith:CreateWindow(opts)
     local self = setmetatable({
         Theme              = theme,
         _themeBindings     = {},
-        _backgroundCleanup = nil,
-        CurrentThemePreset = nil,
         Tabs               = {},
         TopTabs            = {},
         MinSize            = minSizeVec,
@@ -1783,25 +2227,13 @@ function Vanith:CreateWindow(opts)
     local ms = New("UIStroke", {Thickness = 1, Transparency = 0.2, Parent = main})
     self:_track(ms, "Color", "Stroke")
 
-    -- Halter für Hintergrund-Themes aus zweiter Datei
-    local bgHolder = New("Frame", {
-        Name = "BackgroundHolder",
-        BackgroundTransparency = 1,
-        BorderSizePixel = 0,
-        ClipsDescendants = true,
-        Size = UDim2.fromScale(1, 1),
-        ZIndex = 0,
-        Parent = main,
-    })
-    self.BackgroundHolder = bgHolder
-
     local glass = New("Frame", {
         BackgroundColor3 = Color3.new(1, 1, 1),
         BackgroundTransparency = 0.97,
         BorderSizePixel = 0,
         Size = UDim2.fromScale(1, 1),
         Parent = main,
-        ZIndex = 1,
+        ZIndex = 0,
     })
     New("UICorner", {CornerRadius = UDim.new(0, 10), Parent = glass})
 
@@ -1854,23 +2286,8 @@ function Vanith:CreateWindow(opts)
         ZIndex = 4,
     })
     self:_track(brandLabel, "TextColor3", "Accent")
-
-    local function fitTitle()
-        local maxSize = 14
-        local minSize = 10
-        for size = maxSize, minSize, -1 do
-            brandLabel.TextSize = size
-            if brand.AbsoluteSize.X > 0 then
-                if brandLabel.TextBounds.X <= (brand.AbsoluteSize.X - 8) then
-                    break
-                end
-            end
-        end
-    end
-
-    brand:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitTitle)
-    brandLabel:GetPropertyChangedSignal("Text"):Connect(fitTitle)
-    fitTitle()
+    -- Fenster-Titel auto-fit, damit er nicht aus dem Rahmen geht
+    AutoFitText(brandLabel, 14, 8, 8)
 
     -- middle strip mit top tabs
     local strip = New("Frame", {
@@ -1931,12 +2348,7 @@ function Vanith:CreateWindow(opts)
     tabsHolder:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateTopTabsLayout)
     task.defer(updateTopTabsLayout)
 
-    -- optional direkt ein ThemePreset beim Erstellen anwenden ---------
-    if type(opts.ThemePreset) == "string" and self.SetThemePreset then
-        self:SetThemePreset(opts.ThemePreset)
-    end
-
-    -- control box rechts (minimize / close) - wie vorher --------------
+    -- control box rechts (minimize / close)
 
     local controlBox = New("Frame", {
         BorderSizePixel = 0,
@@ -1969,7 +2381,7 @@ function Vanith:CreateWindow(opts)
         Size = UDim2.new(0.5, 0, 1, 0),
         Position = UDim2.new(0.5, 0, 0, 0),
         Font = Enum.Font.GothamBold,
-        Text = "X",  -- normales X wie gewünscht
+        Text = "X",
         TextSize = 16,
         Parent = controlBox,
         ZIndex = 4,
@@ -2015,13 +2427,22 @@ function Vanith:CreateWindow(opts)
     local sbStroke = New("UIStroke", {Thickness = 1, Transparency = 0.25, Parent = sidebar})
     self:_track(sbStroke, "Color", "Stroke")
 
-    local sideList = New("Frame", {
+    -- Tabs als ScrollFrame -> scrollbare Tab-Liste (auch Mobile)
+    local sideList = New("ScrollingFrame", {
         BackgroundTransparency = 1,
+        BorderSizePixel = 0,
         Position = UDim2.fromOffset(10, 14),
         Size = UDim2.new(1, -20, 1, -24),
         Parent = sidebar,
+        ScrollBarThickness = 3,
+        ScrollBarImageTransparency = 0.3,
+        ScrollBarImageColor3 = theme.Accent,
+        ScrollingDirection = Enum.ScrollingDirection.Y,
+        CanvasSize = UDim2.new(0, 0, 0, 0),
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
     })
     self.SideList = sideList
+
     local sideLayout = New("UIListLayout", {
         SortOrder = Enum.SortOrder.LayoutOrder,
         Padding   = UDim.new(0, 6),
@@ -2083,7 +2504,6 @@ function Vanith:CreateWindow(opts)
         BackgroundTransparency = 0,
         Size = UDim2.fromOffset(190, 40),
 
-        -- oben in der Mitte
         AnchorPoint = Vector2.new(0.5, 0),
         Position    = UDim2.new(0.5, 0, 0, 24),
 
@@ -2180,11 +2600,6 @@ function Vanith:CreateWindow(opts)
         end)
     end
 
-    -- optional direkt ein ThemePreset beim Erstellen anwenden
-    if type(opts.ThemePreset) == "string" and self.SetThemePreset then
-        self:SetThemePreset(opts.ThemePreset)
-    end
-
     return self
 end
 
@@ -2209,8 +2624,6 @@ function Window:_getConfigPath(name)
     local ext     = (self.ConfigExtension or "json"):gsub("^%.+", "")
     return string.format("%s/%s.%s", folder, cfgName, ext)
 end
-
--- nur echte config files listen (richtige extension)
 
 function Window:ListConfigs()
     local folder = self:_ensureConfigFolder()
@@ -2246,6 +2659,8 @@ function Window:ListConfigs()
     return result
 end
 
+-- Config serialisieren -----------------------------------------------
+
 function Window:_buildConfigData()
     local data = {
         _meta = {
@@ -2269,10 +2684,13 @@ function Window:_buildConfigData()
                 controls = {},
             }
 
-            for ci, ctrl in ipairs(sec._controls or {}) do
+            local controlIndex = 0
+
+            for _, ctrl in ipairs(sec._controls or {}) do
                 local pv = rawget(ctrl, "_profileValues")
                 if type(pv) == "table" then
                     local profiles = {}
+
                     for key, val in pairs(pv) do
                         local keyName
                         if key == "__default" then
@@ -2282,11 +2700,17 @@ function Window:_buildConfigData()
                         else
                             keyName = tostring(key)
                         end
-                        if type(val) == "boolean" or type(val) == "number" or type(val) == "string" then
+
+                        if type(val) == "boolean"
+                        or type(val) == "number"
+                        or type(val) == "string"
+                        or type(val) == "table" then
                             profiles[keyName] = val
                         end
                     end
-                    sEntry.controls[ci] = {
+
+                    controlIndex = controlIndex + 1
+                    sEntry.controls[controlIndex] = {
                         profiles = profiles,
                     }
                 end
@@ -2301,6 +2725,8 @@ function Window:_buildConfigData()
     return data
 end
 
+-- Config anwenden ----------------------------------------------------
+
 function Window:_applyConfigData(data)
     if type(data) ~= "table" or type(data.tabs) ~= "table" then
         return
@@ -2312,29 +2738,65 @@ function Window:_applyConfigData(data)
             for si, sec in ipairs(tab._sections or {}) do
                 local sEntry = tEntry.sections[si]
                 if sEntry and type(sEntry.controls) == "table" then
-                    for ci, ctrl in ipairs(sec._controls or {}) do
-                        local cEntry = sEntry.controls[ci]
-                        if cEntry and type(cEntry.profiles) == "table" and ctrl._profileValues then
-                            local newPV = {}
-                            for profName, val in pairs(cEntry.profiles) do
-                                local key
-                                if profName == "__default" then
-                                    key = "__default"
-                                else
-                                    for _, tt in ipairs(tab._topTabs or {}) do
-                                        if tt.Label and tt.Label.Text == profName then
-                                            key = tt
-                                            break
+                    local controlsData = sEntry.controls
+
+                    -- alte Saves: string-Keys ("1","2",...)
+                    local needsFix = false
+                    for k, _ in pairs(controlsData) do
+                        if type(k) ~= "number" then
+                            needsFix = true
+                            break
+                        end
+                    end
+
+                    if needsFix then
+                        local fixed = {}
+                        for k, v in pairs(controlsData) do
+                            local idx = tonumber(k)
+                            if idx then
+                                fixed[idx] = v
+                            end
+                        end
+                        controlsData = fixed
+                        sEntry.controls = fixed
+                    end
+
+                    local controlIndex = 0
+
+                    for _, ctrl in ipairs(sec._controls or {}) do
+                        if type(ctrl._profileValues) == "table" then
+                            controlIndex = controlIndex + 1
+                            local cEntry = controlsData[controlIndex]
+
+                            if cEntry and type(cEntry.profiles) == "table" then
+                                local pv = ctrl._profileValues
+
+                                -- altes Table leeren, Referenzen behalten
+                                for k in pairs(pv) do
+                                    pv[k] = nil
+                                end
+
+                                for profName, val in pairs(cEntry.profiles) do
+                                    local key
+                                    if profName == "__default" then
+                                        key = "__default"
+                                    else
+                                        for _, tt in ipairs(tab._topTabs or {}) do
+                                            if tt.Label and tt.Label.Text == profName then
+                                                key = tt
+                                                break
+                                            end
                                         end
                                     end
+
+                                    if key then
+                                        pv[key] = val
+                                    end
                                 end
-                                if key then
-                                    newPV[key] = val
+
+                                if ctrl._syncProfile then
+                                    ctrl:_syncProfile()
                                 end
-                            end
-                            ctrl._profileValues = newPV
-                            if ctrl._syncProfile then
-                                ctrl:_syncProfile()
                             end
                         end
                     end
