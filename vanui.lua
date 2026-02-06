@@ -124,6 +124,21 @@ function Vanith:GetThemes()
     return copy
 end
 
+-- externe Themes automatisch laden (GitHub)
+do
+    local url = "https://raw.githubusercontent.com/DEERSTUDIO101/Van-UI/refs/heads/main/vanthemes.lua"
+    local ok, src = pcall(function()
+        return game:HttpGet(url)
+    end)
+    if ok and type(src) == "string" and src ~= "" then
+        local okRun, fnOrErr = pcall(loadstring, src)
+        if okRun and type(fnOrErr) == "function" then
+            -- Vanith als Parameter Ã¼bergeben, damit keine Global-Variable nÃ¶tig ist
+            pcall(fnOrErr, Vanith)
+        end
+    end
+end
+
 -- eingebaute Standard-Themes (werden direkt beim Laden registriert) -------
 
 do
