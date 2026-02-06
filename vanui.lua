@@ -128,6 +128,28 @@ local DEFAULT_THEME = {
     Field   = Color3.fromRGB(16, 16, 20),
 }
 
+-- externe Theme-Registry (fÃ¼r eingebettete Themes)
+Vanith.RegisteredThemes = {}
+
+function Vanith:RegisterTheme(name, def)
+    if type(name) ~= "string" or type(def) ~= "table" then
+        return
+    end
+    self.RegisteredThemes[name] = def
+end
+
+function Vanith:GetTheme(name)
+    return self.RegisteredThemes[name]
+end
+
+function Vanith:GetThemes()
+    local copy = {}
+    for k, v in pairs(self.RegisteredThemes) do
+        copy[k] = v
+    end
+    return copy
+end
+
 -- Vanith UI - externe Theme-/Hintergrund-Definitionen
 -- (lokal eingebettet, keine externe Datei)
 do
