@@ -2,7 +2,12 @@
 -- Diese Datei wird NACH der Hauptdatei 'Van UI.lua' ausgeführt.
 -- Sie registriert Themes über Vanith:RegisterTheme(...)
 
-if not Vanith then
+-- Vanith robust auflÃ¶sen: Parameter, globale Env, oder globales Symbol
+local injected = ...
+local env = (getgenv and getgenv()) or _G
+local VanithRef = injected or (env and env.Vanith) or Vanith
+
+if not VanithRef then
     warn("VanThemes.lua: Vanith library nicht gefunden (Van UI.lua vorher laden!)")
     return
 end
@@ -453,7 +458,7 @@ Themes["Ocean"] = {
 -- alle Themes bei Vanith registrieren ------------------------------------
 
 for name, def in pairs(Themes) do
-    Vanith:RegisterTheme(name, def)
+    VanithRef:RegisterTheme(name, def)
 end
 
 return Themes
